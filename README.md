@@ -7,7 +7,7 @@
 
 Ferramenta automatizada em **Bash** e **PowerShell** para auditoria de saúde de serviços web e verificação da validade de certificados SSL/TLS em lote.
 
-Projetada com foco em **segurança (DevSecOps)**, a ferramenta realiza a sanitização de *inputs* para prevenir *command injection*, trata erros de conexão de forma graciosa e processa listas de domínios via arquivo de texto.
+Projetada com foco em **segurança (DevSecOps)**, a ferramenta realiza a sanitização de *inputs* para prevenir *command injection*, trata erros de conexão de forma limpa e processa listas de domínios via arquivo de texto.
 
 ---
 
@@ -33,6 +33,20 @@ Projetada com foco em **segurança (DevSecOps)**, a ferramenta realiza a sanitiz
 
 ---
 
+## 📂 Estrutura do Repositório
+
+```text
+.
+├── .gitignore
+├── LICENSE
+├── README.md            # Documentação do projeto
+└── scripts/
+    ├── audit-sites.sh
+    └── Audit-Sites.ps1
+```
+
+---
+
 ## 🛠️ Estrutura do Arquivo de Entrada (`sites.txt`)
 
 Crie um arquivo `.txt` contendo a lista de domínios ou URLs que deseja auditar. O interpretador aceita comentários iniciados com `#`:
@@ -46,21 +60,6 @@ www.microsoft.com/pt-br
 # Ambientes de Homologação
 exemplo.org
 ```
-
----
-
-## 📂 Estrutura do Repositório
-
-```text
-.
-├── .gitignore
-├── LICENSE
-├── README.md            # Documentação do projeto
-└── scripts/
-    ├── audit-sites.sh
-    └── Audit-Sites.ps1
-```
-
 ---
 
 ## 💻 Como Usar
