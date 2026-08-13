@@ -24,10 +24,12 @@ Projetada com foco em **segurança (DevSecOps)**, a ferramenta realiza a sanitiz
 ## 🚀 Requisitos
 
 ### Para o Script Bash (`audit-sites.sh`)
+
 - Sistema operacional Linux / macOS / WSL
 - Utilitários nativos: `curl`, `openssl`, `sed`, `tr`
 
 ### Para o Script PowerShell (`Audit-Sites.ps1`)
+
 - Windows PowerShell 5.1+ ou PowerShell Core 7.x+ (Cross-platform)
 - Permissão de execução local habilitada no PowerShell
 
@@ -60,11 +62,13 @@ www.microsoft.com/pt-br
 # Ambientes de Homologação
 exemplo.org
 ```
+
 ---
 
 ## 💻 Como Usar
 
 ### 1. Executando via Bash (Linux/macOS)
+
 Dê permissão de execução ao script e passe o arquivo de texto como argumento:
 
 ```bash
@@ -76,6 +80,7 @@ chmod +x scripts/audit-sites.sh
 ```
 
 ### 2. Executando via PowerShell (Windows/Linux)
+
 Abra o terminal do PowerShell e execute o script passando o parâmetro -ArquivoSites:
 
 ```powershell
@@ -86,34 +91,60 @@ Set-ExecutionPolicy RemoteSigned -Scope Process
 .\scripts\Audit-Sites.ps1 -ArquivoSites "sites.txt"
 ```
 
+### Possíveis Bloqueios de Execução (PowerShell)
+
+> **Nota**: O atributo `Zone.Identifier` (MOTW - Mark of the Web) pode bloquear a execução do script caso ele seja baixado da internet/mídia externa, mesmo com a política `RemoteSigned` ativa (`Set-ExecutionPolicy RemoteSigned -Scope Process`). Nesses casos, o PowerShell identifica o arquivo como remoto e exige uma assinatura digital.
+
+#### Como Resolver
+
+1. **Opção 1: Desbloquear o arquivo do script (Recomendado)**
+
+   ```powershell
+   Unblock-File -Path .\Audit-Sites.ps1
+   .\Audit-Sites.ps1 -ArquivoSites "sites.txt"
+   ```
+
+2. **Opção 2: Ajustar a ExecutionPolicy no escopo do Processo**
+
+    ```powershell
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    .\Audit-Sites.ps1 -ArquivoSites "sites.txt"
+    ```
+
 ---
 
 ## 📊 Exemplo de Output (Log de Auditoria)
+
 Após a execução, um arquivo de log será gerado no mesmo diretório (ex: Auditoria_Multi_2026-08-11_22-00-00.log) contendo o resultado detalhado:
 
 ```text
---- Inicio da Auditoria em Lote: Tue Aug 11 22:00:00 -03 2026 ---
+--- Inicio da Auditoria em Lote: 08/13/2026 10:05:04 ---
 
 ==================================================
 Alvo #1: www.google.com
 ==================================================
    [1] Checando status HTTP/S...
-       -> Status: OK
+       -> Status: OK (HTTP 200)
    [2] Verificando validade do certificado SSL...
-       -> Válido até: Sep 15 08:30:00 2026 GMT
+       -> Válido até: 02/04/2027 10:32:19
+       -> Cadeia SSL: Confiável (Validada com sucesso)
 
 ==================================================
 Alvo #2: github.com
 ==================================================
    [1] Checando status HTTP/S...
-       -> Status: OK
+       -> Status: OK (HTTP 200)
    [2] Verificando validade do certificado SSL...
-       -> Válido até: Nov 20 23:59:59 2026 GMT
+       -> Válido até: 02/09/2027 13:03:18
+       -> Cadeia SSL: Confiável (Validada com sucesso)
+
+--- Auditoria concluída para 2 alvos. ---
 ```
 
 ---
 
 ## 🔒 Boas Práticas de DevSecOps Aplicadas
+
 - `set -euo pipefail` (Bash): Força o término imediato em caso de falhas críticas não tratadas.
 
 - Tratamento de Exceções `Try/Catch` (PowerShell): Captura erros de DNS, portas fechadas e timeouts sem interromper a execução global.
