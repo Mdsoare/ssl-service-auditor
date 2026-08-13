@@ -1,82 +1,130 @@
-<#
+﻿<#
 .SYNOPSIS
-    Script de Auditoria de Conectividade e Validação de SSL em Lote.
+    Script de Auditoria de Conectividade e Validade de SSL em Lote.
 .DESCRIPTION
     Lê uma lista de sites de um arquivo texto, higieniza os inputs,
-    verifica a conectividade HTTP/S e valida a expiração do certificado SSL.
+    verifica a conectividade HTTP/S e valida a expiração e confiabilidade do certificado SSL.
 .NOTES
     Autor: Marcelo
     Data: Junho/2026    
-    Versão: 1.0 (PowerShell Edition)
+    Versão: 2.1 (DevSecOps - Encoding Fixed / Add Finally Block / Persistent Query SSL/TLS)
 #>
 
-$ErrorActionPreference = "Stop"
-
-# 1. Validação do Input (Parâmetro)
+[CmdletBinding()]
 Param(
     [Parameter(Mandatory=$true, HelpMessage="Caminho para o arquivo .txt com a lista de sites.")]
+    [ValidateScript({ Test-Path $_ -PathType Leaf })]
     [string]$ArquivoSites
 )
 
-# 2. Verifica se o arquivo existe
-if (-not (Test-Path -Path $ArquivoSites -PathType Leaf)) {
-    Write-Error "Erro: O arquivo '$ArquivoSites' não foi encontrado."
-    exit 1
-}
+$ErrorActionPreference = "Stop"
 
 # Nome do log em formato padrão ISO-like
 $DataAtual = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $LogFile = "Auditoria_Multi_$DataAtual.log"
 
-"--- Inicio da Auditoria em Lote: $(Get-Date) ---" | Out-File -FilePath $LogFile -Encoding utf8
+# Função utilitária para gravação centralizada de log (UTF-8 Nativo sem BOM)
+function Write-AuditLog {
+    param (
+        [string]$Mensagem,
+        [string]$Path = $LogFile
+    )
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::AppendAllText((Resolve-Path -Path .\ -ErrorAction SilentlyContinue).Path + "\$Path", "$Mensagem`r`n", $utf8NoBom)
+}
+
+# Inicializa o log
+Write-AuditLog "--- Inicio da Auditoria em Lote: $(Get-Date) ---"
 
 # ==============================================================================
 # FUNÇÕES DE AUDITORIA
 # ==============================================================================
 
 function Test-ServiceStatus {
-    param ([string]$Alvo)
-    "   [1] Checando status HTTP/S..." | Out-File -FilePath $LogFile -Append -Encoding utf8
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$Alvo
+    )
+
+    Write-AuditLog "   [1] Checando status HTTP/S..."
 
     try {        
-        $Response = Invoke-WebRequest -Uri "https://$Alvo" -Method Head -TimeoutSec 5 -UseBasicParsing
-        "       -> Status: OK (HTTP $($Response.StatusCode))" | Out-File -FilePath $LogFile -Append -Encoding utf8
+        $iwrParams = @{
+            Uri        = "https://$Alvo"
+            Method     = "Head"
+            TimeoutSec = 5
+        }
+        if ($PSVersionTable.PSEdition -eq "Desktop") {
+            $iwrParams["UseBasicParsing"] = $true
+        }
+
+        $Response = Invoke-WebRequest @iwrParams
+        Write-AuditLog "       -> Status: OK (HTTP $($Response.StatusCode))"
     }
     catch {
-        "       -> Status: ALERTA (Falha ou inacessível via HTTPS. Detalhe: $_)" | Out-File -FilePath $LogFile -Append -Encoding utf8
+        Write-AuditLog "       -> Status: ALERTA (Falha ou inacessível via HTTPS. Detalhe: $_)"
     }
 }
 
 function Test-SSLValidity {
-    param ([string]$Alvo)
-    "   [2] Verificando validade do certificado SSL..." | Out-File -FilePath $LogFile -Append -Encoding utf8
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$Alvo
+    )
+
+    Write-AuditLog "   [2] Verificando validade do certificado SSL..."
+
+    $TcpClient = $null
+    $SslStream = $null
 
     try {
-        # Cria uma conexão TCP nativa com a porta 443 do alvo
         $TcpClient = New-Object System.Net.Sockets.TcpClient
-        $TcpClient.Connect($Alvo, 443)
+        
+        $connectTask = $TcpClient.ConnectAsync($Alvo, 443)
+        if (-not $connectTask.Wait(3000)) {
+            throw "Timeout ao tentar conectar na porta 443 (TCP)."
+        }
 
-        # Cria o stream SSL e valida o certificado remoto
-        $SslStream = New-Object System.Net.Security.SslStream($TcpClient.GetStream(), $false, ({ $true }))
+        $isTrustworthy = $true
+        $validationCallback = {
+            param($sender, $certificate, $chain, $sslPolicyErrors)
+            if ($sslPolicyErrors -ne [System.Net.Security.SslPolicyErrors]::None) {
+                $script:isTrustworthy = $false
+            }
+            return $true
+        }
+
+        $SslStream = New-Object System.Net.Security.SslStream($TcpClient.GetStream(), $false, $validationCallback)
         $SslStream.AuthenticateAsClient($Alvo)
 
-        # Extrai o certificado e a data de expiração
         $Certificado = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($SslStream.RemoteCertificate)
         $DataExpiracao = $Certificado.NotAfter
 
-        "       -> Válido até: $DataExpiracao" | Out-File -FilePath $LogFile -Append -Encoding utf8
-
-        # Fecha as conexões de forma limpa
-        $SslStream.Close()
-        $TcpClient.Close()
+        Write-AuditLog "       -> Válido até: $DataExpiracao"
+        
+        if (-not $isTrustworthy) {
+            Write-AuditLog "       -> ALERTA DE SEGURANÇA: O certificado não é confiável (Autoassinado, Erro de Cadeia ou Nome Incompatível)."
+        } else {
+            Write-AuditLog "       -> Cadeia SSL: Confiável (Validada com sucesso)"
+        }
     }
     catch {
-        "       -> ERRO: Falha ao obter ou validar o certificado SSL. Detalhe: $_" | Out-File -FilePath $LogFile -Append -Encoding utf8
+        Write-AuditLog "       -> ERRO: Falha ao obter ou validar o certificado SSL. Detalhe: $_"
+    }
+    finally {
+        if ($null -ne $SslStream) { 
+            $SslStream.Close()
+            $SslStream.Dispose() 
+        }
+        if ($null -ne $TcpClient) { 
+            $TcpClient.Close()
+            $TcpClient.Dispose() 
+        }
     }
 }
 
 # ==============================================================================
-# LOOP PRINCIPAL (Leitura e Higienização do Arquivo)
+# LOOP PRINCIPAL
 # ==============================================================================
 
 Write-Host "Processando sites do arquivo: $ArquivoSites..." -ForegroundColor Cyan
@@ -88,7 +136,7 @@ Get-Content -Path $ArquivoSites | ForEach-Object {
     $Linha = $_.Trim()
     
     if ([string]::IsNullOrEmpty($Linha) -or $Linha.StartsWith("#")) {
-        return # Equivalente ao 'continue' do Bash dentro do ForEach-Object
+        return
     }
 
     try {
@@ -100,22 +148,19 @@ Get-Content -Path $ArquivoSites | ForEach-Object {
         $Dominio = $UriValida.Host
     }
     catch {
-        "   [ERRO DE INPUT] Não foi possível processar a linha: $Linha" | Out-File -FilePath $LogFile -Append -Encoding utf8
+        Write-AuditLog "   [ERRO DE INPUT] Não foi possível processar a linha: $Linha"
         return
     }
 
     $Contador++
 
-    # Escrita visual no arquivo de log
-    "`n==================================================" | Out-File -FilePath $LogFile -Append -Encoding utf8
-    "Alvo #$Contador: $Dominio" | Out-File -FilePath $LogFile -Append -Encoding utf8
-    "==================================================" | Out-File -FilePath $LogFile -Append -Encoding utf8
+    Write-AuditLog "`r`n=================================================="
+    Write-AuditLog "Alvo #${Contador}: $Dominio"
+    Write-AuditLog "=================================================="
 
-    # Executa as validações
     Test-ServiceStatus -Alvo $Dominio
     Test-SSLValidity -Alvo $Dominio
 }
 
-# Finalização
-"`n--- Auditoria concluída para $Contador alvos. ---" | Out-File -FilePath $LogFile -Append -Encoding utf8
+Write-AuditLog "`r`n--- Auditoria concluída para $Contador alvos. ---"
 Write-Host "Auditoria concluída com sucesso! Log gerado: $LogFile" -ForegroundColor Green
