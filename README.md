@@ -95,7 +95,7 @@ Após a execução, um arquivo de log será gerado no mesmo diretório (ex: Audi
 --- Inicio da Auditoria em Lote: Tue Aug 11 22:00:00 -03 2026 ---
 
 ==================================================
-Alvo #1: [www.google.com](https://www.google.com)
+Alvo #1: www.google.com
 ==================================================
    [1] Checando status HTTP/S...
        -> Status: OK
