@@ -7,7 +7,7 @@
 .NOTES
     Autor: Marcelo
     Data: Junho/2026    
-    Versão: 2.2 (DevSecOps - PSScriptAnalyzer Compliant)
+    Versão: 2.3 (DevSecOps - PSScriptAnalyzer Clean)
 #>
 
 [CmdletBinding()]
@@ -87,7 +87,9 @@ function Test-SSLValidity {
 
         $isTrustworthy = $true
         $validationCallback = {
+            [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '')]
             param($reqSender, $targetCert, $certChain, $sslPolicyErrors)
+
             if ($sslPolicyErrors -ne [System.Net.Security.SslPolicyErrors]::None) {
                 $script:isTrustworthy = $false
             }
