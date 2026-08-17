@@ -1,0 +1,46 @@
+name: DevSecOps Unified Security Scan
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+permissions:  
+  actions: read
+  security-events: write
+  contents: read
+
+jobs:
+  sast-shellcheck:
+    name: SAST (ShellCheck)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+
+  sast-powershell:
+    name: SAST (PSScriptAnalyzer)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          $results = @(Invoke-ScriptAnalyzer -Path ./ -Recurse -Severity Warning, Error)
+          
+          if ($results.Count -gt 0) {
+              $results | Select-Object ScriptName, Line, Message, RuleName | Format-List
+              Write-Error "Foram encontradas $($results.Count) inconformidades no PSScriptAnalyzer."
+              exit 1
+          }
+
+  sca-osv:
+    name: SCA (OSV-Scanner)
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.5.0"
