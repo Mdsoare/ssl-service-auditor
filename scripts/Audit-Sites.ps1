@@ -87,8 +87,11 @@ function Test-SSLValidity {
 
         $isTrustworthy = $true
         $validationCallback = {
-            [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', '')]
             param($reqSender, $targetCert, $certChain, $sslPolicyErrors)
+            
+            $null = $reqSender
+            $null = $targetCert
+            $null = $certChain
 
             if ($sslPolicyErrors -ne [System.Net.Security.SslPolicyErrors]::None) {
                 $script:isTrustworthy = $false
