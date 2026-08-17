@@ -127,8 +127,8 @@ function Test-SSLValidity {
 # LOOP PRINCIPAL
 # ==============================================================================
 
-Write-Host "Processando sites do arquivo: $ArquivoSites..." -ForegroundColor Cyan
-Write-Host "Acompanhe o progresso em tempo real no arquivo de log: $LogFile" -ForegroundColor Yellow
+Write-Output "Processando sites do arquivo: $ArquivoSites..." -ForegroundColor Cyan
+Write-Output "Acompanhe o progresso em tempo real no arquivo de log: $LogFile" -ForegroundColor Yellow
 
 $Contador = 0
 
@@ -163,4 +163,4 @@ Get-Content -Path $ArquivoSites | ForEach-Object {
 }
 
 Write-AuditLog "`r`n--- Auditoria concluída para $Contador alvos. ---"
-Write-Host "Auditoria concluída com sucesso! Log gerado: $LogFile" -ForegroundColor Green
+Write-Output "Auditoria concluída com sucesso! Log gerado: $LogFile" -ForegroundColor Green
