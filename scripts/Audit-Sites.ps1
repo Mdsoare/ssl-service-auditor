@@ -7,7 +7,7 @@
 .NOTES
     Autor: Marcelo
     Data: Junho/2026    
-    Versão: 2.1 (DevSecOps - Encoding Fixed / Add Finally Block / Persistent Query SSL/TLS)
+    Versão: 2.2 (DevSecOps - PSScriptAnalyzer Compliant)
 #>
 
 [CmdletBinding()]
@@ -87,7 +87,7 @@ function Test-SSLValidity {
 
         $isTrustworthy = $true
         $validationCallback = {
-            param($sender, $certificate, $chain, $sslPolicyErrors)
+            param($reqSender, $targetCert, $certChain, $sslPolicyErrors)
             if ($sslPolicyErrors -ne [System.Net.Security.SslPolicyErrors]::None) {
                 $script:isTrustworthy = $false
             }
@@ -127,8 +127,8 @@ function Test-SSLValidity {
 # LOOP PRINCIPAL
 # ==============================================================================
 
-Write-Output "Processando sites do arquivo: $ArquivoSites..." -ForegroundColor Cyan
-Write-Output "Acompanhe o progresso em tempo real no arquivo de log: $LogFile" -ForegroundColor Yellow
+Write-Output "Processando sites do arquivo: $ArquivoSites..."
+Write-Output "Acompanhe o progresso em tempo real no arquivo de log: $LogFile"
 
 $Contador = 0
 
@@ -163,4 +163,4 @@ Get-Content -Path $ArquivoSites | ForEach-Object {
 }
 
 Write-AuditLog "`r`n--- Auditoria concluída para $Contador alvos. ---"
-Write-Output "Auditoria concluída com sucesso! Log gerado: $LogFile" -ForegroundColor Green
+Write-Output "Auditoria concluída com sucesso! Log gerado: $LogFile"
