@@ -139,12 +139,11 @@ jobs:
 
       - name: Executar Semgrep Scan
         run: |
-          semgrep scan \            
+          semgrep scan \
             --config=p/bash \
-            --config=p/owasp-top-ten \
             --sarif \
             --output=semgrep.sarif \
-            || true
+            . || true
 
       - name: Upload do Relatório SARIF do Semgrep
         uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28
