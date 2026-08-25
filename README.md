@@ -1,13 +1,22 @@
 # 🛡️ SSL & Service Health Auditor
 
-![Bash](https://img.shields.io/badge/Bash-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)
-![PowerShell](https://img.shields.io/badge/PowerShell-5391FE?style=for-the-badge&logo=powershell&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)
-![Security](https://img.shields.io/badge/DevSecOps-Hardened-brightgreen?style=for-the-badge)
+<p align="left">
+  <!-- Badge do Status do Workflow de Segurança -->
+  <a href="https://github.com/Mdsoare/ssl-service-auditor/actions/workflows/security-scan.yml">
+    <img src="https://github.com/Mdsoare/ssl-service-auditor/actions/workflows/security-scan.yml/badge.svg" alt="DevSecOps Security Scan Status">
+  </a>
+  <!-- Suas Badges Personalizadas -->
+  <img src="https://img.shields.io/badge/Bash-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="Bash">
+  <img src="https://img.shields.io/badge/PowerShell-5391FE?style=for-the-badge&logo=powershell&logoColor=white" alt="PowerShell">
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/DevSecOps-Hardened-brightgreen?style=for-the-badge" alt="DevSecOps">
+</p>
+
+---
 
 Ferramenta automatizada em **Bash** e **PowerShell** para auditoria de saúde de serviços web e verificação da validade de certificados SSL/TLS em lote.
 
-Projetada com foco em **segurança (DevSecOps)**, a ferramenta realiza a sanitização de *inputs* para prevenir *command injection*, trata erros de conexão de forma limpa e processa listas de domínios via arquivo de texto.
+Projetada com foco em **segurança (DevSecOps)**, a ferramenta realiza a sanitização de _inputs_ para prevenir _command injection_, trata erros de conexão de forma limpa e processa listas de domínios via arquivo de texto.
 
 ---
 
@@ -106,10 +115,10 @@ Set-ExecutionPolicy RemoteSigned -Scope Process
 
 2. **Opção 2: Ajustar a ExecutionPolicy no escopo do Processo**
 
-    ```powershell
-    Set-ExecutionPolicy Bypass -Scope Process -Force
-    .\Audit-Sites.ps1 -ArquivoSites "sites.txt"
-    ```
+   ```powershell
+   Set-ExecutionPolicy Bypass -Scope Process -Force
+   .\Audit-Sites.ps1 -ArquivoSites "sites.txt"
+   ```
 
 ---
 
@@ -160,4 +169,5 @@ Alvo #2: github.com
 Este projeto está sob a licença [MIT](LICENSE).
 
 ---
-*Desenvolvido por **Marcelo Soares** | Especialista em Segurança da Informação e Computação Forense.*
+
+_Desenvolvido por **Marcelo Soares** | Especialista em Segurança da Informação e Computação Forense._

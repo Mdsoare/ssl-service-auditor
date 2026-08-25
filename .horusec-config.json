@@ -1,0 +1,33 @@
+{
+  "horusecCwd": "./",
+  "filterPath": "",
+  "certInsecureSkipVerify": false,
+  "certPath": "",
+  "type": "git",
+  "gitURL": "",
+  "lintVersion": "latest",
+  "repositoryAuthorization": "",
+  "returnErrorIfFoundVulnerability": true,
+  "showProjectTypes": false,
+  "printOutputType": "text",
+  "jsonOutputFilePath": "",
+  "severitiesToIgnore": [
+    "INFO"
+  ],
+  "ignoreFilesCustomRules": [
+    ".vscode/",
+    ".cache/",
+    "Modules/",
+    "packages/",
+    "vendor/",
+    "build/",
+    "out/",
+    "dist/",
+    "artifacts/",
+    "build_artifact/",
+    ".PowerShell/"
+  ],
+  "ignoreRules": [],
+  "toolsToIgnore": [],
+  "customRules": []
+}

@@ -2,45 +2,242 @@ name: DevSecOps Unified Security Scan
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
 
-permissions:  
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
   actions: read
-  security-events: write
   contents: read
+  security-events: write
 
 jobs:
+  # -------------------------------------------------------------
+  # JOB 1: Detecção de Segredos e Credenciais Vazadas (TruffleHog)
+  # -------------------------------------------------------------
+  secret-scanning:
+    name: Secret Scan (TruffleHog)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Scan para detecção de segredos
+        uses: trufflesecurity/trufflehog@bcfcf73aaf4759d4dadc2783177c245a02792318
+        with:
+          extra_args: --only-verified
+
+  # -------------------------------------------------------------
+  # JOB 2: Detecção de Segredos (Gitleaks)
+  # -------------------------------------------------------------
+  secret-scannin-gitleaks:
+    name: Secret Scan (Gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+        
+      - name: Gitleaks / Secret Scan
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # -------------------------------------------------------------
+  # JOB 3: Qualidade de Código e Linters (ShellScript)
+  # -------------------------------------------------------------
   sast-shellcheck:
     name: SAST (ShellCheck)
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout do Repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@master
+      - name: Executar ShellCheck (ShellScript)
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38
+        with:
+          ignore_paths: "node_modules .venv"
 
-  sast-powershell:
+  # -------------------------------------------------------------
+  # JOB 4: Qualidade de Código e Linters (PowerShell)
+  # -------------------------------------------------------------
+  sast-pwsh:
     name: SAST (PSScriptAnalyzer)
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      - name: Run PSScriptAnalyzer
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Executar PSScriptAnalyzer (PowerShell)
         shell: pwsh
         run: |
-          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
-          $results = @(Invoke-ScriptAnalyzer -Path ./ -Recurse -Severity Warning, Error)
-          
-          if ($results.Count -gt 0) {
-              $results | Select-Object ScriptName, Line, Message, RuleName | Format-List
-              Write-Error "Foram encontradas $($results.Count) inconformidades no PSScriptAnalyzer."
-              exit 1
+          Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -ErrorAction Stop
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse
+          if ($results) {
+              $results | Format-Table -AutoSize
+              throw "Foram encontradas inconformidades pelo PSScriptAnalyzer."
           }
 
+  # -------------------------------------------------------------
+  # JOB 5: SAST Open Source com Horusec
+  # -------------------------------------------------------------
+  sast-horusec:
+    name: SAST (Horusec Scan)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Run Horusec Security Scan
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/ZupIT/horusec/main/deployments/scripts/install.sh -o install_horusec.sh
+          bash install_horusec.sh latest
+          rm -f install_horusec.sh
+          horusec start -p="./" --config-file-path="./.horusec-config.json" -D -I -e="false" -o="sarif" -O="./horusec-results.sarif" || true
+
+      - name: Upload Horusec SARIF report
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: horusec-results.sarif
+          category: Horusec
+
+  # -------------------------------------------------------------
+  # JOB 6: SAST baseado em Regras com Semgrep
+  # -------------------------------------------------------------
+  sast-semgrep:
+    name: SAST (Semgrep Scan)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11"
+
+      - name: Instalar Semgrep
+        run: pip install --no-cache-dir semgrep
+
+      - name: Executar Semgrep Scan
+        run: |
+          semgrep scan \            
+            --config=p/bash \
+            --config=p/owasp-top-ten \
+            --sarif \
+            --output=semgrep.sarif \
+            || true
+
+      - name: Upload do Relatório SARIF do Semgrep
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: semgrep.sarif
+          category: Semgrep
+
+  # -------------------------------------------------------------
+  # JOB 7: Análise de Dependências Multilinguagem com OSV-Scanner
+  # -------------------------------------------------------------
   sca-osv:
     name: SCA (OSV-Scanner)
-    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.5.0"
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@6e4298ebc4db23e847df9b2e2de2939d6f066c67
+    with:
+      scan-args: "--allow-no-lockfiles --recursive ./"
+
+  # -------------------------------------------------------------
+  # JOB 8: Análise de Dependências e Misconfigurations com Trivy
+  # -------------------------------------------------------------
+  sca-trivy:
+    name: SCA & Misconfig (Trivy Scan)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Executar Varredura Trivy (Repository)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH"
+
+      - name: Upload do Relatório SARIF do Trivy
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
+
+  # -------------------------------------------------------------
+  # JOB 9: Validação de Integridade do Projeto
+  # -------------------------------------------------------------
+  project-structure-check:
+    name: Validate Project Structure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Validar integridade estrutural
+        run: |
+          test -f README.md || (echo "❌ README.md não encontrado!" && exit 1)
+          echo "✅ Estrutura básica do repositório validada."
+
+  # -------------------------------------------------------------
+  # JOB 10: Build e Agrupamento dos Artefatos
+  # -------------------------------------------------------------
+  build-artifact:
+    name: Bundle & Upload Artifact
+    needs:
+      [
+        secret-scanning,
+        secret-scannin-gitleaks,
+        sast-shellcheck,
+        sast-pwsh,       
+        sast-horusec,
+        sast-semgrep,
+        sca-osv,
+        sca-trivy,
+        project-structure-check,
+      ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Gerar pacote de artefatos
+        run: |
+          mkdir -p build_artifact
+          cp -r README.md build_artifact/ 2>/dev/null || true
+          if [ -f package.json ]; then cp package.json build_artifact/; fi
+          
+      - name: Subir Artefato de Build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: project-build-artifact
+          path: build_artifact/
+          retention-days: 7
+          if-no-files-found: warn

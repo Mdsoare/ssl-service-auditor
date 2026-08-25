@@ -1,0 +1,26 @@
+# Caches, Configurações de Editor e Arquivos Temporários
+.vscode/
+.cache/
+*.tmp
+*.log
+
+# Módulos de Terceiros e Dependências Externas (Vendor)
+.PowerShell/
+Modules/
+packages/
+vendor/
+
+# Artefatos de Build, Deploy e Empacotamento
+build/
+out/
+dist/
+artifacts/
+build_artifact/
+
+# Relatórios, Artefatos e Dumps SARIF
+*.sarif
+*.json
+*.log
+*.xml
+coverage/
+.coverage
