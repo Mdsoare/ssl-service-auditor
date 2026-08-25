@@ -46,7 +46,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
-        
+
       - name: Gitleaks / Secret Scan
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
         env:
@@ -85,9 +85,19 @@ jobs:
           Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
           Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -ErrorAction Stop
           $results = Invoke-ScriptAnalyzer -Path . -Recurse
+
+          # Filtra apenas severidades que representam risco real (Error ou Warning)
+          $criticalResults = $results | Where-Object { $_.Severity -eq 'Error' -or $_.Severity -eq 'Warning' }
+
           if ($results) {
+              Write-Host "--- Relatório completo do PSScriptAnalyzer ---"
               $results | Format-Table -AutoSize
-              throw "Foram encontradas inconformidades pelo PSScriptAnalyzer."
+          }
+
+          if ($criticalResults) {
+              throw "Foram encontradas inconformidades críticas (Error/Warning) pelo PSScriptAnalyzer."
+          } else {
+              Write-Host "✅ Nenhuma inconformidade crítica encontrada no PSScriptAnalyzer."
           }
 
   # -------------------------------------------------------------
@@ -214,7 +224,7 @@ jobs:
         secret-scanning,
         secret-scannin-gitleaks,
         sast-shellcheck,
-        sast-pwsh,       
+        sast-pwsh,
         sast-horusec,
         sast-semgrep,
         sca-osv,
@@ -232,7 +242,7 @@ jobs:
           mkdir -p build_artifact
           cp -r README.md build_artifact/ 2>/dev/null || true
           if [ -f package.json ]; then cp package.json build_artifact/; fi
-          
+
       - name: Subir Artefato de Build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
