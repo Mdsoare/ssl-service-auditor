@@ -6,7 +6,7 @@
     verifica a conectividade HTTP/S e valida a expiração e confiabilidade do certificado SSL.
 .NOTES
     Autor: Marcelo
-    Data: Junho/2026    
+    Data: Junho/2026
     Versão: 2.3 (DevSecOps - PSScriptAnalyzer Clean)
 #>
 
@@ -48,7 +48,7 @@ function Test-ServiceStatus {
 
     Write-AuditLog "   [1] Checando status HTTP/S..."
 
-    try {        
+    try {
         $iwrParams = @{
             Uri        = "https://$Alvo"
             Method     = "Head"
@@ -79,7 +79,7 @@ function Test-SSLValidity {
 
     try {
         $TcpClient = New-Object System.Net.Sockets.TcpClient
-        
+
         $connectTask = $TcpClient.ConnectAsync($Alvo, 443)
         if (-not $connectTask.Wait(3000)) {
             throw "Timeout ao tentar conectar na porta 443 (TCP)."
@@ -88,7 +88,7 @@ function Test-SSLValidity {
         $isTrustworthy = $true
         $validationCallback = {
             param($reqSender, $targetCert, $certChain, $sslPolicyErrors)
-            
+
             $null = $reqSender
             $null = $targetCert
             $null = $certChain
@@ -106,7 +106,7 @@ function Test-SSLValidity {
         $DataExpiracao = $Certificado.NotAfter
 
         Write-AuditLog "       -> Válido até: $DataExpiracao"
-        
+
         if (-not $isTrustworthy) {
             Write-AuditLog "       -> ALERTA DE SEGURANÇA: O certificado não é confiável (Autoassinado, Erro de Cadeia ou Nome Incompatível)."
         } else {
@@ -117,13 +117,13 @@ function Test-SSLValidity {
         Write-AuditLog "       -> ERRO: Falha ao obter ou validar o certificado SSL. Detalhe: $_"
     }
     finally {
-        if ($null -ne $SslStream) { 
+        if ($null -ne $SslStream) {
             $SslStream.Close()
-            $SslStream.Dispose() 
+            $SslStream.Dispose()
         }
-        if ($null -ne $TcpClient) { 
+        if ($null -ne $TcpClient) {
             $TcpClient.Close()
-            $TcpClient.Dispose() 
+            $TcpClient.Dispose()
         }
     }
 }
@@ -139,7 +139,7 @@ $Contador = 0
 
 Get-Content -Path $ArquivoSites | ForEach-Object {
     $Linha = $_.Trim()
-    
+
     if ([string]::IsNullOrEmpty($Linha) -or $Linha.StartsWith("#")) {
         return
     }
