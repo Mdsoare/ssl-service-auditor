@@ -1,17 +1,16 @@
 # 🛡️ SSL & Service Health Auditor
 
-<p align="left">
   <!-- Badge do Status do Workflow de Segurança -->
-  <a href="https://github.com/Mdsoare/ssl-service-auditor/actions/workflows/security-scan.yml">
-    <img src="https://github.com/Mdsoare/ssl-service-auditor/actions/workflows/security-scan.yml/badge.svg" alt="DevSecOps Security Scan Status">
-  </a>
+  ![CI Pipeline](https://github.com/Mdsoare/ssl-service-auditor/actions/workflows/security-scan.yml/badge.svg)
+  ![DevSecOps](https://img.shields.io/badge/DevSecOps-Hardened-brightgreen?style=for-the-badge)
+  ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
+  
   <!-- Suas Badges Personalizadas -->
-  <img src="https://img.shields.io/badge/Bash-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="Bash">
-  <img src="https://img.shields.io/badge/PowerShell-5391FE?style=for-the-badge&logo=powershell&logoColor=white" alt="PowerShell">
-  <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/DevSecOps-Hardened-brightgreen?style=for-the-badge" alt="DevSecOps">
-</p>
-
+  ![Bash](https://img.shields.io/badge/Bash-4EAA25?style=for-the-badge&logo=gnu-bash&logoColor=white)
+  ![PowerShell](https://img.shields.io/badge/PowerShell-5391FE?style=for-the-badge&logo=powershell&logoColor=white)
+  ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)
+  ![Dependabot](https://img.shields.io/badge/Dependabot-025E8C?style=for-the-badge&logo=dependabot&logoColor=white)
+  
 ---
 
 Ferramenta automatizada em **Bash** e **PowerShell** para auditoria de saúde de serviços web e verificação da validade de certificados SSL/TLS em lote.
@@ -23,9 +22,13 @@ Projetada com foco em **segurança (DevSecOps)**, a ferramenta realiza a sanitiz
 ## ✨ Funcionalidades
 
 - **Auditoria de Conectividade:** Checa disponibilidade de serviços web via requisições HTTPS (com suporte a timeouts configurados).
+
 - **Validação de Certificado SSL/TLS:** Extrai e grava no log a data de expiração exata (`notAfter`) do certificado remoto.
+
 - **Processamento em Lote (Batch):** Lê múltiplos alvos de um único arquivo `.txt` ignorando comentários, linhas em branco e caracteres invisíveis de quebra de linha (`\r`).
+
 - **Sanitização de Input:** Trata automaticamente URLs com `http://`, `https://` ou caminhos longos para extrair apenas o FQDN/Host.
+
 - **Auditoria Segura:** Logs formatados com marcação de data/hora (padrão `ISO-8601`) para evitar substituição de arquivos e contaminação de escopo.
 
 ---
@@ -35,11 +38,13 @@ Projetada com foco em **segurança (DevSecOps)**, a ferramenta realiza a sanitiz
 ### Para o Script Bash (`audit-sites.sh`)
 
 - Sistema operacional Linux / macOS / WSL
+
 - Utilitários nativos: `curl`, `openssl`, `sed`, `tr`
 
 ### Para o Script PowerShell (`Audit-Sites.ps1`)
 
 - Windows PowerShell 5.1+ ou PowerShell Core 7.x+ (Cross-platform)
+
 - Permissão de execução local habilitada no PowerShell
 
 ---

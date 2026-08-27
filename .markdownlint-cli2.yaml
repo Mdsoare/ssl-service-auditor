@@ -4,6 +4,7 @@ config:
   MD022: false # Ignora espaçamento de títulos
   MD024: false # Permite títulos duplicados se estiverem em seções diferentes (opcional)
   MD031: false # Ignora espaçamento de blocos de código
+  MD033: false # Ignore uso de tags no Markdown
   MD047: false # Ignora exigência de quebra de linha no fim do arquivo
     
 # Ignorar pastas de sistema ou dependências se houverem
