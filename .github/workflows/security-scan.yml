@@ -31,8 +31,6 @@ jobs:
 
       - name: Scan para detecção de segredos
         uses: trufflesecurity/trufflehog@bcfcf73aaf4759d4dadc2783177c245a02792318
-        with:
-          extra_args: --only-verified
 
   # -------------------------------------------------------------
   # JOB 2: Detecção de Segredos (Gitleaks)
@@ -53,7 +51,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # -------------------------------------------------------------
-  # JOB 3: Qualidade de Código e Linters (ShellScript)
+  # JOB 3: Qualidade de Sintaxe Docs (Markdown)
+  # -------------------------------------------------------------
+  markdown-lint:
+    name: Lint Markdown Docs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Lint Markdown Files
+        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff
+        with:
+          globs: "**/*.md"
+
+  # -------------------------------------------------------------
+  # JOB 4: Qualidade de Código e Linters (ShellScript)
   # -------------------------------------------------------------
   sast-shellcheck:
     name: SAST (ShellCheck)
@@ -66,10 +80,10 @@ jobs:
       - name: Executar ShellCheck (ShellScript)
         uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38
         with:
-          ignore_paths: "node_modules .venv"
+          ignore_paths: ".cache .venv build dist artifacts"
 
   # -------------------------------------------------------------
-  # JOB 4: Qualidade de Código e Linters (PowerShell)
+  # JOB 5: Qualidade de Código e Linters (PowerShell)
   # -------------------------------------------------------------
   sast-pwsh:
     name: SAST (PSScriptAnalyzer)
@@ -101,7 +115,7 @@ jobs:
           }
 
   # -------------------------------------------------------------
-  # JOB 5: SAST Open Source com Horusec
+  # JOB 6: SAST Open Source com Horusec
   # -------------------------------------------------------------
   sast-horusec:
     name: SAST (Horusec Scan)
@@ -127,7 +141,7 @@ jobs:
           category: Horusec
 
   # -------------------------------------------------------------
-  # JOB 6: SAST baseado em Regras com Semgrep
+  # JOB 7: SAST baseado em Regras com Semgrep
   # -------------------------------------------------------------
   sast-semgrep:
     name: SAST (Semgrep Scan)
@@ -164,7 +178,7 @@ jobs:
           category: Semgrep
 
   # -------------------------------------------------------------
-  # JOB 7: Análise de Dependências Multilinguagem com OSV-Scanner
+  # JOB 8: Análise de Dependências Multilinguagem com OSV-Scanner
   # -------------------------------------------------------------
   sca-osv:
     name: SCA (OSV-Scanner)
@@ -173,7 +187,7 @@ jobs:
       scan-args: "--allow-no-lockfiles --recursive ./"
 
   # -------------------------------------------------------------
-  # JOB 8: Análise de Dependências e Misconfigurations com Trivy
+  # JOB 9: Análise de Dependências e Misconfigurations com Trivy
   # -------------------------------------------------------------
   sca-trivy:
     name: SCA & Misconfig (Trivy Scan)
@@ -199,7 +213,7 @@ jobs:
           sarif_file: "trivy-results.sarif"
 
   # -------------------------------------------------------------
-  # JOB 9: Validação de Integridade do Projeto
+  # JOB 10: Validação de Integridade do Projeto
   # -------------------------------------------------------------
   project-structure-check:
     name: Validate Project Structure
@@ -215,7 +229,7 @@ jobs:
           echo "✅ Estrutura básica do repositório validada."
 
   # -------------------------------------------------------------
-  # JOB 10: Build e Agrupamento dos Artefatos
+  # JOB 11: Build e Agrupamento dos Artefatos
   # -------------------------------------------------------------
   build-artifact:
     name: Bundle & Upload Artifact
@@ -223,6 +237,7 @@ jobs:
       [
         secret-scanning,
         secret-scannin-gitleaks,
+        markdown-lint,
         sast-shellcheck,
         sast-pwsh,
         sast-horusec,
@@ -239,9 +254,9 @@ jobs:
 
       - name: Gerar pacote de artefatos
         run: |
-          mkdir -p build_artifact
+          mkdir -p build_artifact/scripts
           cp -r README.md build_artifact/ 2>/dev/null || true
-          if [ -f package.json ]; then cp package.json build_artifact/; fi
+          cp -r scripts/ build_artifact/ 2>/dev/null || true
 
       - name: Subir Artefato de Build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
