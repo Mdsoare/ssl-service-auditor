@@ -35,7 +35,7 @@ jobs:
   # -------------------------------------------------------------
   # JOB 2: Detecção de Segredos (Gitleaks)
   # -------------------------------------------------------------
-  secret-scannin-gitleaks:
+  secret-scanning-gitleaks:
     name: Secret Scan (Gitleaks)
     runs-on: ubuntu-latest
 
@@ -83,44 +83,69 @@ jobs:
           ignore_paths: ".cache .venv build dist artifacts"
 
   # -------------------------------------------------------------
-  # JOB 5: Qualidade de Código e Linters (PowerShell)
+  # JOB 5: Análise Completa PSScriptAnalyzer (Estilo, SAST e Segurança)
   # -------------------------------------------------------------
-  sast-pwsh:
-    name: SAST (PSScriptAnalyzer)
+  powershell-analysis:
+    name: PowerShell Quality & Security Analysis
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout do Repositório
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - name: Executar PSScriptAnalyzer (PowerShell)
+      - name: Executar Análise Unificada PSScriptAnalyzer
         shell: pwsh
         run: |
           Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted
-          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -ErrorAction Stop
-          $results = Invoke-ScriptAnalyzer -Path . -Recurse
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          
+          $totalErrors = 0
 
-          # Filtra apenas severidades que representam risco real (Error ou Warning)
-          $criticalResults = $results | Where-Object { $_.Severity -eq 'Error' -or $_.Severity -eq 'Warning' }
-
-          if ($results) {
-              Write-Host "--- Relatório completo do PSScriptAnalyzer ---"
-              $results | Format-Table -AutoSize
+          # 1. Validação de Estilo e Formatação
+          Write-Host "🔍 Executando verificações de estilo e formatação..." -ForegroundColor Cyan
+          $styleRules = @('PSAvoidTrailingWhitespace', 'PSAvoidUsingCmdletAliases')
+          $styleResults = @(Invoke-ScriptAnalyzer -Path ./ -Recurse -IncludeRule $styleRules)
+          if ($styleResults.Count -gt 0) {
+              $styleResults | Select-Object ScriptName, Line, Message, RuleName | Format-List
+              Write-Error "Encontradas $($styleResults.Count) inconsistências de estilo/formatação."
+              $totalErrors += $styleResults.Count
           }
 
-          if ($criticalResults) {
-              throw "Foram encontradas inconformidades críticas (Error/Warning) pelo PSScriptAnalyzer."
+          # 2. SAST Geral (Severidade Warning e Error)
+          Write-Host "🔍 Executando SAST geral (Warning/Error)..." -ForegroundColor Cyan
+          $sastResults = @(Invoke-ScriptAnalyzer -Path ./ -Recurse -Severity Warning, Error)
+          if ($sastResults.Count -gt 0) {
+              $sastResults | Select-Object ScriptName, Line, Message, RuleName | Format-List
+              Write-Error "Foram encontradas $($sastResults.Count) inconformidades gerais."
+              $totalErrors += $sastResults.Count
+          }
+
+          # 3. SAST Especializado em Segurança
+          Write-Host "🔍 Executando regras avançadas de segurança..." -ForegroundColor Cyan
+          $secRules = @(
+            'PSAvoidUsingInvokeExpression',
+            'PSAvoidUsingPlainTextForPassword',
+            'PSAvoidUsingWMIC'
+          )
+          $secResults = @(Invoke-ScriptAnalyzer -Path ./ -Recurse -IncludeRule $secRules)
+          if ($secResults.Count -gt 0) {
+              $secResults | Select-Object ScriptName, Line, Message, RuleName | Format-List
+              Write-Error "Encontradas vulnerabilidades de código de alta severidade!"
+              $totalErrors += $secResults.Count
+          }
+
+          # Encerra o job se houver qualquer falha nas etapas acima
+          if ($totalErrors -gt 0) {
+              exit 1
           } else {
-              Write-Host "✅ Nenhuma inconformidade crítica encontrada no PSScriptAnalyzer."
+              Write-Host "✨ Todas as análises do PowerShell passaram com sucesso!" -ForegroundColor Green
           }
 
   # -------------------------------------------------------------
   # JOB 6: SAST Open Source com Horusec
   # -------------------------------------------------------------
   sast-horusec:
-    name: SAST (Horusec Scan)
+    name: SAST (Horusec)
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout do Repositório
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -132,10 +157,20 @@ jobs:
           rm -f install_horusec.sh
           horusec start -p="./" --config-file-path="./.horusec-config.json" -D -I -e="false" -o="sarif" -O="./horusec-results.sarif" || true
 
+      - name: Tratar e Validar SARIF do Horusec
+        id: check_sarif
+        if: always()
+        run: |
+          if [ -f "./horusec-results.sarif" ] && grep -q '"results": \[.\+\]' ./horusec-results.sarif; then
+            echo "has_results=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Horusec não encontrou vulnerabilidades ou o arquivo SARIF está vazio."
+            echo "has_results=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Horusec SARIF report
         uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28
-        if: always()
-        continue-on-error: true
+        if: always() && steps.check_sarif.outputs.has_results == 'true'
         with:
           sarif_file: horusec-results.sarif
           category: Horusec
@@ -169,10 +204,20 @@ jobs:
             --output=semgrep.sarif \
             . || true
 
+      - name: Tratar e Validar SARIF do Semgrep
+        id: check_sarif
+        if: always()
+        run: |
+          if [ -f "semgrep.sarif" ] && grep -q '"results": \[.\+\]' semgrep.sarif; then
+            echo "has_results=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Semgrep não encontrou vulnerabilidades ou o arquivo SARIF está vazio."
+            echo "has_results=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload do Relatório SARIF do Semgrep
         uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28
-        if: always()
-        continue-on-error: true
+        if: always() && steps.check_sarif.outputs.has_results == 'true'
         with:
           sarif_file: semgrep.sarif
           category: Semgrep
@@ -213,37 +258,73 @@ jobs:
           sarif_file: "trivy-results.sarif"
 
   # -------------------------------------------------------------
-  # JOB 10: Validação de Integridade do Projeto
+  # JOB 10: Auditoria Nativa de Dependências (PowerShell)
   # -------------------------------------------------------------
-  project-structure-check:
-    name: Validate Project Structure
+  sca-powershell-modules:
+    name: SCA (PowerShell Module & Repository Audit)
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout do Repositório
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - name: Validar integridade estrutural
+      - name: Auditar Repositórios e Módulos Importados
+        shell: pwsh
         run: |
-          test -f README.md || (echo "❌ README.md não encontrado!" && exit 1)
-          echo "✅ Estrutura básica do repositório validada."
+          $psd1Files = Get-ChildItem -Path . -Recurse -Filter *.psd1
+          foreach ($file in $psd1Files) {
+              $manifest = Import-PowerShellDataFile -Path $file.FullName
+              if ($manifest.RequiredModules) {
+                  Write-Host "Módulos requeridos em $($file.Name):"
+                  $manifest.RequiredModules | Format-Table
+              }
+          }
+          Write-Host "✅ Auditoria de manifestos PowerShell concluída."
 
   # -------------------------------------------------------------
-  # JOB 11: Build e Agrupamento dos Artefatos
+  # JOB 11: Validação de Integridade Estrutural do Projeto PowerShell
+  # -------------------------------------------------------------
+  powershell-structure-check:
+    name: Validate PowerShell Structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Validar arquivos essenciais do ecossistema PowerShell
+        shell: pwsh
+        run: |
+          $ps1Files = Get-ChildItem -Path . -Recurse -Filter *.ps1
+          $psd1Files = Get-ChildItem -Path . -Recurse -Filter *.psd1
+
+          if ($ps1Files.Count -eq 0 -and $psd1Files.Count -eq 0) {
+              Write-Error "❌ ERRO: Nenhum script (.ps1) ou manifesto (.psd1) foi encontrado!"
+              exit 1
+          }
+
+          if (-not (Test-Path "README.md")) {
+              Write-Error "❌ README.md não encontrado!"
+              exit 1
+          }
+
+          Write-Host "✅ Estrutura básica do repositório PowerShell validada."
+
+  # -------------------------------------------------------------
+  # JOB 12: Build e Agrupamento dos Artefatos
   # -------------------------------------------------------------
   build-artifact:
     name: Bundle & Upload Artifact
     needs:
       [
         secret-scanning,
-        secret-scannin-gitleaks,
+        secret-scanning-gitleaks,
         markdown-lint,
         sast-shellcheck,
-        sast-pwsh,
+        powershell-analysis,
         sast-horusec,
         sast-semgrep,
         sca-osv,
         sca-trivy,
+        sca-powershell-modules,
         project-structure-check,
       ]
     runs-on: ubuntu-latest
@@ -253,10 +334,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Gerar pacote de artefatos
+        shell: pwsh
         run: |
-          mkdir -p build_artifact/scripts
-          cp -r README.md build_artifact/ 2>/dev/null || true
-          cp -r scripts/ build_artifact/ 2>/dev/null || true
+          New-Item -ItemType Directory -Path build_artifact -Force
+          if (Test-Path "scripts") {
+              Copy-Item -Path "scripts" -Destination "build_artifact/" -Recurse -Force
+          }
+          if (Test-Path "README.md") {
+              Copy-Item -Path "README.md" -Destination "build_artifact/" -Force
+          }
 
       - name: Subir Artefato de Build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
