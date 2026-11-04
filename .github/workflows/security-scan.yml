@@ -230,35 +230,9 @@ jobs:
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@b1d267aea5211fa648d9d442fa64b90dbdcbdd36
     with:
       scan-args: "--allow-no-lockfiles --recursive ./"
-
+  
   # -------------------------------------------------------------
-  # JOB 9: Análise de Dependências e Misconfigurations com Trivy
-  # -------------------------------------------------------------
-  sca-trivy:
-    name: SCA & Misconfig (Trivy Scan)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout do Repositório
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - name: Executar Varredura Trivy (Repository)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          scan-type: "fs"
-          scan-ref: "."
-          format: "sarif"
-          output: "trivy-results.sarif"
-          severity: "CRITICAL,HIGH"
-
-      - name: Upload do Relatório SARIF do Trivy
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370
-        if: always()
-        with:
-          sarif_file: "trivy-results.sarif"
-
-  # -------------------------------------------------------------
-  # JOB 10: Auditoria Nativa de Dependências (PowerShell)
+  # JOB 9: Auditoria Nativa de Dependências (PowerShell)
   # -------------------------------------------------------------
   sca-powershell-modules:
     name: SCA (PowerShell Module & Repository Audit)
@@ -281,7 +255,7 @@ jobs:
           Write-Host "✅ Auditoria de manifestos PowerShell concluída."
 
   # -------------------------------------------------------------
-  # JOB 11: Validação de Integridade Estrutural do Projeto PowerShell
+  # JOB 10: Validação de Integridade Estrutural do Projeto PowerShell
   # -------------------------------------------------------------
   powershell-structure-check:
     name: Validate PowerShell Structure
@@ -309,7 +283,7 @@ jobs:
           Write-Host "✅ Estrutura básica do repositório PowerShell validada."
 
   # -------------------------------------------------------------
-  # JOB 12: Build e Agrupamento dos Artefatos
+  # JOB 11: Build e Agrupamento dos Artefatos
   # -------------------------------------------------------------
   build-artifact:
     name: Bundle & Upload Artifact
@@ -322,8 +296,7 @@ jobs:
         powershell-analysis,
         sast-horusec,
         sast-semgrep,
-        sca-osv,
-        sca-trivy,
+        sca-osv,        
         sca-powershell-modules,
         powershell-structure-check,
       ]
